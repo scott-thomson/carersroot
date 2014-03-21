@@ -83,6 +83,7 @@ object Xmls {
 
   val formatter = DateTimeFormat.forPattern("yyyy-MM-dd");
   def asDate(s: String): DateTime = formatter.parseDateTime(s);
+  def toString(d: DateTime) = formatter.print(d)
 }
 
 case class CarersXmlSituation(w: World, validateClaimXml: Elem) extends XmlSituation {
@@ -427,6 +428,7 @@ object Carers {
 
     build
 
+ 
   case class TimeLineItem(events: List[(DateRange, ReasonsOrAmount)]) {
     val startDate = events.head._1.from
     val endDate = events.last._1.to
@@ -436,11 +438,12 @@ object Carers {
     })
     val wasOk = daysInWhichIWasOk > 2
     override def toString = s"TimeLineItem($startDate, $endDate, days=$daysInWhichIWasOk, wasOK=$wasOk, dateRange=\n  ${events.mkString("\n  ")})"
+   
   }
   type TimeLine = List[TimeLineItem]
-  
+
   /** Returns a DatesToBeProcessedTogether and the days that the claim is valid for */
-  
+
   def findTimeLine(c: CarersXmlSituation): TimeLine = {
     val dates = interestingDates(c)
     val dayToSplit = DateRanges.sunday
@@ -461,7 +464,7 @@ object Carers {
       (json \ "date").as[DateTime],
       (json \ "award").as[Int],
       (json \ "reason").as[String]))
-      
+
     def writes(stli: SimplifiedTimelineItem) = JsObject(Seq(
       "date" -> JsString(stli.date.toString("dd:MM:yyyy")),
       "award" -> JsNumber(stli.award),
