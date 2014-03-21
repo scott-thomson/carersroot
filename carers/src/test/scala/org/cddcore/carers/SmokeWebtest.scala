@@ -50,7 +50,7 @@ class SmokeWebtest extends FlatSpec with ShouldMatchers with HtmlUnit with Befor
     textArea("custxml").value = getClaimXML
     submit()
     val xml: Elem = XML.loadString(pageSource)
-    val timeLineNodes = xml \ "body" \ "form" \ "pre" \ "div" \ "p"
+    val timeLineNodes = xml \ "body" \ "form" \ "pre" \ "div"
     assert(timeLineNodes.length > 0)
   }
 
