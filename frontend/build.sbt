@@ -1,6 +1,8 @@
-name := "frontend"
+name := """CarersDigital"""
 
 version := "1.0-SNAPSHOT"
+
+scalaVersion := "2.10.1"
 
 libraryDependencies ++= Seq(
   // Select Play modules
@@ -10,7 +12,7 @@ libraryDependencies ++= Seq(
   //javaEbean, // Java Ebean plugin
   //javaJpa,   // Java JPA plugin
   //filters,   // A set of built-in filters
-  //javaCore,  // The core Java API
+  javaCore,  // The core Java API
   // WebJars pull in client-side web libraries
   "org.webjars" %% "webjars-play" % "2.2.0",
   "org.webjars" % "bootstrap" % "2.3.1",
@@ -21,8 +23,8 @@ libraryDependencies ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "org.cddcore" %% "website" % "1.8.5.12",
-  "org.cddcore" %% "legacy" % "1.8.5.12"  
+  "org.cddcore" %% "website" % "1.8.5.13",
+  "org.cddcore" %% "legacy" % "1.8.5.13"  
 )
 
 play.Project.playScalaSettings

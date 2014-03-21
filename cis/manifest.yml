@@ -1,0 +1,8 @@
+---
+# Manifest for deploying application on CloudFoundry
+applications:
+- name: CarersCIS
+  memory: 256M
+  host: atos-CIS
+  buildpack: https://github.com/heroku/heroku-buildpack-scala.git
+  instances: 1
