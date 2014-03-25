@@ -46,6 +46,10 @@ case class DateRangesToBeProcessedTogether(dateRanges: List[DateRange]) {
 @RunWith(classOf[CddJunitRunner])
 object DateRanges {
   val monday = 1
+  val tuesday = 2
+  val wednesday = 3
+  val thursday = 4
+  val friday = 5
   val saturday = 6
   val sunday = 7
 
@@ -54,29 +58,39 @@ object DateRanges {
   implicit def listStringTuplesToDateRangesToBeProcessedTogether(stringTuples: List[Tuple3[String, String, String]]) =
     DateRangesToBeProcessedTogether(stringTuples.collect { case (from, to, reason) => DateRange(from, to, reason) })
 
+  val validClaimStartDays = Set(monday, wednesday)
+
+  val validClaimStartDay = Engine[DateTime, Boolean]().title("Valid Claim Start Date").
+    useCase("Valid days", "Valid start days are monday and wednesday").
+    scenario("2010-1-4").expected(true).
+    scenario("2010-1-6").expected(true).
+    useCase("Invalid days", "are not monday and wednesday").
+    scenario("2010-1-5").expected(false).
+    because((d: DateTime) => !validClaimStartDays.contains(d.dayOfWeek().get())).
+    build
+
   val firstDayOfWeek = Engine[DateTime, Int, DateTime]().title("First Day Of Week Engine").
     description("Given a date and a first day of week index, return the date of the first day of the week containing the supplied date").
     useCase("Date supplied is greater than or equal to the day of week to start on").
-    scenario("2010-1-4", 1, "Given a monday and start on monday").expected("2010-1-4").
+    scenario("2010-1-4", monday, "Given a monday and start on monday").expected("2010-1-4").
     code((d: DateTime, dayToStartOn: Int) => d.withDayOfWeek(dayToStartOn)).
-    scenario("2010-1-5", 1, "Given a tuesday and start on monday").expected("2010-1-4").
-    scenario("2010-1-10", 1, "Given a sunday and start on monday").expected("2010-1-4").
+    scenario("2010-1-5", monday, "Given a tuesday and start on monday").expected("2010-1-4").
+    scenario("2010-1-10", monday, "Given a sunday and start on monday").expected("2010-1-4").
 
-    scenario("2010-1-10", 7, "Given a sunday and start on sunday").expected("2010-1-10").
+    scenario("2010-1-10", sunday, "Given a sunday and start on sunday").expected("2010-1-10").
 
     useCase("Date supplied is less than the day of week to start on").
-    scenario("2010-1-11", 2, "Given a monday and start on tuesday").expected("2010-1-5").
+    scenario("2010-1-11", tuesday, "Given a monday and start on tuesday").expected("2010-1-5").
     code((d: DateTime, dayToStartOn: Int) => d.minusWeeks(1).withDayOfWeek(dayToStartOn)).
     because((d: DateTime, dayToStartOn: Int) => dayToStartOn > d.getDayOfWeek()).
-    scenario("2010-1-9", 7, "Given a saturday and start on sunday").expected("2010-1-3").
-    scenario("2010-1-9", 3, "Given a saturday and start on wednesday").expected("2010-1-6").
-    scenario("2010-1-5", 7, "Given a tuesday and start on sunday").expected("2010-1-3").
-
+    scenario("2010-1-9", sunday, "Given a saturday and start on sunday").expected("2010-1-3").
+    scenario("2010-1-9", wednesday, "Given a saturday and start on wednesday").expected("2010-1-6").
+    scenario("2010-1-5", sunday, "Given a tuesday and start on sunday").expected("2010-1-3").
     build
 
   def lastDayOfWeek(d: DateTime, dayToSplit: Int) = firstDayOfWeek(d, dayToSplit).plusDays(6)
 
-  def datesToRanges = Engine[List[(DateTime, String)], List[DateRange]]().title("Date to ranges").
+  val datesToRanges = Engine[List[(DateTime, String)], List[DateRange]]().title("Date to ranges").
     scenario(List(), "No days").expected(Nil).
     because((dates: List[(DateTime, String)]) => dates.size == 0).
 
@@ -179,12 +193,12 @@ object DateRanges {
     build
 
   def main(args: Array[String]) {
-    implicit def stringToDate(x: String) = Claim.asDate(x)
-    val t: List[(DateTime, String)] = List(("2010-1-3", "a"), ("2010-1-5", "b"), ("2010-1-6", "c"), ("2010-2-10", "d"));
-    val dayToSplit = DateRanges.sunday
-    val result = DateRanges.interestingDatesToDateRangesToBeProcessedTogether(t, dayToSplit)
-    println(result.mkString("\n"))
-    println
+    //    implicit def stringToDate(x: String) = Claim.asDate(x)
+    //    val t: List[(DateTime, String)] = List(("2010-1-3", "a"), ("2010-1-5", "b"), ("2010-1-6", "c"), ("2010-2-10", "d"));
+    //    val dayToSplit = DateRanges.sunday
+    //    val result = DateRanges.interestingDatesToDateRangesToBeProcessedTogether(t, dayToSplit)
+    //    println(result.mkString("\n"))
+    //    println
   }
 
 }

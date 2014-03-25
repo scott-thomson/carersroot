@@ -1,0 +1,12 @@
+memory: 1G
+instances: 1
+buildpack: https://github.com/heroku/heroku-buildpack-scala.git
+
+applications:
+- name: CisInRoot
+  host: cis-root
+  path: ./cis/
+
+- name: CarersInRoot
+  host: carers-root
+  path: ./carers/

@@ -1,45 +1,26 @@
 package org.cddcore.carers
 
-import org.junit.runner.RunWith
+import scala.language.implicitConversions
+import scala.xml._
+
 import org.cddcore.engine._
 import org.cddcore.engine.tests.CddJunitRunner
 import org.joda.time.DateTime
-import org.joda.time.format.DateTimeFormat
-import scala.xml._
 import org.joda.time.Years
-import scala.language.implicitConversions
+import org.joda.time.format.DateTimeFormat
+import org.junit.runner.RunWith
 
 case class KeyAndParams(key: String, comment: String, params: Any*)
 
-case class World(ninoToCis: NinoToCis = new TestNinoToCis) extends LoggerDisplay {
+case class World(ninoToCis: NinoToCis = new WebserverNinoToCis("http://atos-cis.pcfapps.vsel-canopy.com/")) extends LoggerDisplay {
   def loggerDisplay(dp: LoggerDisplayProcessor): String =
     "World()"
-}
-
-trait NinoToCis {
-  def apply(nino: String): Elem
-}
-
-class TestNinoToCis extends NinoToCis {
-  def apply(nino: String) =
-    try {
-      val full = s"Cis/${nino}.txt"
-      val url = getClass.getClassLoader.getResource(full)
-      if (url == null)
-        <NoCis/>
-      else {
-        val xmlString = scala.io.Source.fromURL(url).mkString
-        val xml = XML.loadString(xmlString)
-        xml
-      }
-    } catch {
-      case e: Exception => throw new RuntimeException("Cannot load " + nino, e)
-    }
+  val dayToSplitOn = DateRanges.monday
 }
 
 object Claim {
   def getXml(id: String) = {
-    val full = s"ClaimXml/${id}.xml"
+    val full = s"ValidateClaim/${id}.xml"
     try {
       val url = getClass.getClassLoader.getResource(full)
       val xmlString = scala.io.Source.fromURL(url).mkString
@@ -55,7 +36,7 @@ object Claim {
     validateClaimWithBreaksFull(breaks.map((x) => (x._1, x._2, if (x._3) "Hospitalisation" else "other", if (x._3) "Hospital" else "other")): _*)
 
   def validateClaimWithBreaksFull(breaks: (String, String, String, String)*): CarersXmlSituation = {
-    val url = getClass.getClassLoader.getResource("ClaimXml/CL801119A.xml")
+    val url = getClass.getClassLoader.getResource("ValidateClaim/CL801119A.xml")
     val xmlString = scala.io.Source.fromURL(url).mkString
     val breaksInCareXml = <ClaimBreaks>
                             {
@@ -80,42 +61,42 @@ object Claim {
 case class CarersXmlSituation(world: World, claimXml: Elem) extends XmlSituation {
 
   import Xml._
-  lazy val claimBirthDate = xml(claimXml) \ "ClaimantData" \ "ClaimantBirthDate" \ "PersonBirthDate" \ date("yyyy-MM-dd")
+  val claimBirthDate = xml(claimXml) \ "ClaimantData" \ "ClaimantBirthDate" \ "PersonBirthDate" \ date("yyyy-MM-dd")
   def claimantUnderSixteen(d: DateTime) = Carers.checkUnderSixteen(claimBirthDate(), d)
-  lazy val claim35Hours = xml(claimXml) \ "ClaimData" \ "Claim35Hours" \ yesNo(default = false)
-  lazy val claimCurrentResidentUK = xml(claimXml) \ "ClaimData" \ "ClaimCurrentResidentUK" \ yesNo(default = false)
-  lazy val claimEducationFullTime = xml(claimXml) \ "ClaimData" \ "ClaimEducationFullTime" \ yesNo(default = false)
-  lazy val claimAlwaysUK = xml(claimXml) \ "ClaimData" \ "ClaimAlwaysUK" \ yesNo(default = false)
-  lazy val childCareExpenses = xml(claimXml) \ "ExpensesData" \ "ExpensesChildAmount" \ double
-  lazy val hasChildCareExpenses = xml(claimXml) \ "ExpensesData" \ "ExpensesChild" \ yesNo(default = false)
-  lazy val occPensionExpenses = xml(claimXml) \ "ExpensesData" \ "ExpensesOccPensionAmount" \ double
-  lazy val hasOccPensionExpenses = xml(claimXml) \ "ExpensesData" \ "ExpensesOccPension" \ yesNo(default = false)
-  lazy val psnPensionExpenses = xml(claimXml) \ "ExpensesData" \ "ExpensesPsnPensionAmount" \ double
-  lazy val hasPsnPensionExpenses = xml(claimXml) \ "ExpensesData" \ "ExpensesPsnPension" \ yesNo(default = false)
-  lazy val hasEmploymentData = xml(claimXml) \ "newEmploymentData" \ boolean
-  lazy val employmentGrossSalary = xml(claimXml) \ "EmploymentData" \ "EmploymentGrossSalary" \ double
-  lazy val employmentPayPeriodicity = xml(claimXml) \ "EmploymentData" \ "EmploymentPayPeriodicity" \ string
+  val claim35Hours = xml(claimXml) \ "ClaimData" \ "Claim35Hours" \ yesNo(default = false)
+  val claimCurrentResidentUK = xml(claimXml) \ "ClaimData" \ "ClaimCurrentResidentUK" \ yesNo(default = false)
+  val claimEducationFullTime = xml(claimXml) \ "ClaimData" \ "ClaimEducationFullTime" \ yesNo(default = false)
+  val claimAlwaysUK = xml(claimXml) \ "ClaimData" \ "ClaimAlwaysUK" \ yesNo(default = false)
+  val childCareExpenses = xml(claimXml) \ "ExpensesData" \ "ExpensesChildAmount" \ double
+  val hasChildCareExpenses = xml(claimXml) \ "ExpensesData" \ "ExpensesChild" \ yesNo(default = false)
+  val occPensionExpenses = xml(claimXml) \ "ExpensesData" \ "ExpensesOccPensionAmount" \ double
+  val hasOccPensionExpenses = xml(claimXml) \ "ExpensesData" \ "ExpensesOccPension" \ yesNo(default = false)
+  val psnPensionExpenses = xml(claimXml) \ "ExpensesData" \ "ExpensesPsnPensionAmount" \ double
+  val hasPsnPensionExpenses = xml(claimXml) \ "ExpensesData" \ "ExpensesPsnPension" \ yesNo(default = false)
+  val hasEmploymentData = xml(claimXml) \ "newEmploymentData" \ boolean
+  val employmentGrossSalary = xml(claimXml) \ "EmploymentData" \ "EmploymentGrossSalary" \ double
+  val employmentPayPeriodicity = xml(claimXml) \ "EmploymentData" \ "EmploymentPayPeriodicity" \ string
 
-  lazy val DependantNino = xml(claimXml) \ "DependantData" \ "DependantNINO" \ string
-  lazy val dependantCisXml: Elem = DependantNino.get() match {
+  val DependantNino = xml(claimXml) \ "DependantData" \ "DependantNINO" \ string
+  val dependantCisXml: Elem = DependantNino.get() match {
     case Some(s) => world.ninoToCis(s);
     case None => <NoDependantXml/>
   }
 
-  lazy val dependantLevelOfQualifyingCare = xml(dependantCisXml) \\ "AwardComponent" \ string
-  lazy val dependantHasSufficientLevelOfQualifyingCare = dependantLevelOfQualifyingCare() == "DLA Middle Rate Care"
+  val dependantLevelOfQualifyingCare = xml(dependantCisXml) \\ "AwardComponent" \ string
 
-  lazy val claimStartDate = xml(claimXml) \ "ClaimData" \ "ClaimStartDate" \ date
-  lazy val timeLimitForClaimingThreeMonths = claimSubmittedDate().minusMonths(3)
-  lazy val claimEndDate = xml(claimXml) \ "ClaimData" \ "ClaimEndDate" \ optionDate
-  lazy val claimSubmittedDate = xml(claimXml) \ "StatementData" \ "StatementDate" \ date
-  lazy val dependantAwardStartDate = xml(dependantCisXml) \ "Award" \ "AssessmentDetails" \ "ClaimStartDate" \ optionDate
+  val claimSubmittedDate = xml(claimXml) \ "StatementData" \ "StatementDate" \ date
+  val claimStartDate = xml(claimXml) \ "ClaimData" \ "ClaimStartDate" \ date
+  val firstMondayAfterClaimStartDate = DateRanges.firstDayOfWeek(claimStartDate(), DateRanges.monday).plusDays(7)
+  val timeLimitForClaimingThreeMonths = claimSubmittedDate().minusMonths(3)
+  val claimEndDate = xml(claimXml) \ "ClaimData" \ "ClaimEndDate" \ optionDate
+  val dependantAwardStartDate = xml(dependantCisXml) \ "Award" \ "AssessmentDetails" \ "ClaimStartDate" \ optionDate
 
   def income(d: DateTime) = Income.income(d, this)
   def expenses(d: DateTime) = Expenses.expenses(d, this)
   def netIncome(d: DateTime) = income(d) - expenses(d)
 
-  lazy val awardList = xml(dependantCisXml) \ "Award" \
+  val awardList = xml(dependantCisXml) \ "Award" \
     obj((group) => group.map((n) => {
       val benefitType = (n \ "AssessmentDetails" \ "BenefitType").text
       val awardComponent = (n \ "AwardComponents" \ "AwardComponent").text
@@ -124,7 +105,7 @@ case class CarersXmlSituation(world: World, claimXml: Elem) extends XmlSituation
       Award(benefitType, awardComponent, claimStatus, awardStartDate)
     }).toList)
 
-  lazy val breaksInCare = xml(claimXml) \ "ClaimData" \ "ClaimBreaks" \ "BreakInCare" \
+  val breaksInCare = xml(claimXml) \ "ClaimData" \ "ClaimBreaks" \ "BreakInCare" \
     obj((ns) => ns.map((n) => {
       val from = Claim.asDate((n \ "BICFromDate").text)
       val to = Claim.asDate((n \ "BICToDate").text)
@@ -141,7 +122,7 @@ case class Award(benefitType: String, awardComponent: String, claimStatus: Strin
 object Carers {
   implicit def stringStringToCarers(x: String) = CarersXmlSituation(World(), Claim.getXml(x))
   implicit def stringToDate(x: String) = Claim.asDate(x)
-  implicit def stringToOptionDate(x: String) = Some(Claim.asDate(x))
+  implicit def toValidateClaim(x: List[(String, String, Boolean)]): CarersXmlSituation = Claim.validateClaimWithBreaks(x: _*)
 
   val checkUnderSixteen = Engine[DateTime, DateTime, Boolean]().title("Check for being under-age (less than age sixteen)").
     useCase("Oversixteen").
@@ -208,7 +189,7 @@ object Carers {
     expected(KeyAndParams("503", "Dependent doesn't have a Qualifying Benefit")).
     because((d: DateTime, c: CarersXmlSituation) => !c.isThereAnyQualifyingBenefit(d)).
 
-    scenario("2010-7-25", "CL100101A", "Dependent party with suitable qualifying benefit").
+    scenario("2010-7-25", "CL100100A", "Dependent party with suitable qualifying benefit").
     expected(KeyAndParams("ENT", "Dependent award is valid on date")).
     because((d: DateTime, c: CarersXmlSituation) => c.isThereAnyQualifyingBenefit(d)).
 
@@ -216,11 +197,23 @@ object Carers {
     scenario("2010-7-25", "CL100113A", "Customers with income exceeding the threshold are not entitled to CA").
     expected(KeyAndParams("520", "Too much income")).
     because((d: DateTime, c: CarersXmlSituation) => c.netIncome(d) > 95).
+
+    useCase("Breaks in care", "Breaks in care may cause the claim to be invalid").
+    scenario("2010-12-1", List(("2010-7-1", "2010-12-20", false)), "Long break in care when after 22 weeks").expected(KeyAndParams("502", "Break In Care")).
+    because((d: DateTime, c: CarersXmlSituation) => !BreaksInCare.breaksInCare(d, c)).
+
+    useCase("Claim starts on wrong day of week", "Claims must begin on a monday or a wednesday").
+    scenario("2010-05-06", "CL800119A", "Claimant CL800119 does not begin on a Mon/Wed, asking on claim start date").
+    expected(KeyAndParams("599", "Claim does not begin on Mon or Wed")).
+    because((d: DateTime, c: CarersXmlSituation) => !DateRanges.validClaimStartDay(c.claimStartDate()) && c.claimStartDate() == d).
+    scenario("2010-05-07", "CL800119A", "Claimant CL800119 does not begin on a Mon/Wed, asking on day that isn't the claim start date").
+    expected(KeyAndParams("ENT", "Dependent award is valid on date")).
+
     build
 
-  def main(args: Array[String]) {
-    val formatter = DateTimeFormat.forPattern("yyyy-MM-dd");
-    println("CL100111A": CarersXmlSituation)
-  }
+  //  def main(args: Array[String]) {
+  //    //    val formatter = DateTimeFormat.forPattern("yyyy-MM-dd");
+  //    //    println("CL100111A": CarersXmlSituation)
+  //  }
 
 }
