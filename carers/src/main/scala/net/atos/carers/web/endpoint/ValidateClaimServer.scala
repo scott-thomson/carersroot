@@ -2,12 +2,13 @@ package net.atos.carers.web.endpoint
 
 import scala.xml.Elem
 import scala.xml.XML
-
 import org.eclipse.jetty.server.Server
+import org.cddcore.carers.WebserverNinoToCis
 
 object ValidateClaimServer {
 
-  val claimHandler = new ClaimHandler
+  val ninoToCis = new WebserverNinoToCis("http://cis-root.pcfapps.vsel-canopy.com/")
+  val claimHandler = new ClaimHandler(ninoToCis)
 
   def apply(port: Int = defaultPort) = {
     val s = new Server(port);

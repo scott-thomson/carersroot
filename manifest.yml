@@ -6,7 +6,6 @@ applications:
 - name: CisInRoot
   host: cis-root
   path: ./cis/
-
 - name: CarersInRoot
   host: carers-root
   path: ./carers/

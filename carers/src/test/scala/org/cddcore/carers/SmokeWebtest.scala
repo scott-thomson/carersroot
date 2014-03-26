@@ -3,14 +3,15 @@ package org.cddcore.carers
 import java.util.concurrent.atomic.AtomicInteger
 import scala.xml.Elem
 import scala.xml.XML
-import org.eclipse.jetty.server.Server
 import org.junit.runner.RunWith
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.selenium.HtmlUnit
-import net.atos.carers.web.endpoint.ClaimHandler
+import net.atos.carers.web.endpoint.ValidateClaimServer
 import org.scalatest.junit.JUnitRunner
+import java.net.URL
+import java.net.HttpURLConnection
 
 object SmokeWebtest {
   val port = new AtomicInteger(8090)
@@ -21,9 +22,7 @@ class SmokeWebtest extends FlatSpec with ShouldMatchers with HtmlUnit with Befor
   import SmokeWebtest._
   val localPort = port.getAndIncrement()
   val host = s"http://localhost:$localPort/"
-  val claimHandler = new ClaimHandler
-  val server = new Server(localPort)
-  server.setHandler(claimHandler);
+  val server = ValidateClaimServer(localPort)
 
   override def beforeAll {
     server.start
@@ -33,54 +32,91 @@ class SmokeWebtest extends FlatSpec with ShouldMatchers with HtmlUnit with Befor
     server.stop
   }
 
+  "The default port method" should "return 8090 if PORT isn't set" in {
+    val port = System.getenv("PORT")
+    val expected = if (port == null) 8090 else port.toInt
+    ValidateClaimServer.defaultPort should equal(expected)
+  }
+
   "Our Rubbishy Website" should "Display a form when it recieves a GET" in {
     go to (host + "index.html")
     pageTitle should be("Validate Claim")
   }
 
-  "Our Rubbishy Website" should "be able to set focus to the custxml textarea" in {
+  it should "be able to set focus to the custxml textarea" in {
     click on name("custxml")
   }
-  
-  "Our Rubbishy Website" should "be able to set focus to the claimDate textarea" in {
+
+  it should "be able to set focus to the claimDate textarea" in {
     click on name("claimDate")
   }
-  
-  "Our Rubbishy Website" should "be able to submit claim XML and then see a timeline" in {
+
+  it should "be able to submit claim XML and then see a timeline if no date specified" in {
     textArea("custxml").value = getClaimXML
-    submit()
+    textField("claimDate").value = ""
+    click on id("submit")
     val xml: Elem = XML.loadString(pageSource)
-    val timeLineNodes = xml \ "body" \ "form" \ "pre" \ "div"
-    assert(timeLineNodes.length > 0)
+    assertDivWithIdExists(xml, "timeLine")
   }
 
-  "Our Rubbishy Website" should "blah if submit without claim xml" in {
-    go to (host + "index.html")
-    // submit()
+  it should "be able to submit claim XML and then see a result if date specified" in {
+    textArea("custxml").value = getClaimXML
+    textField("claimDate").value = "2010-5-1"
+    click on id("submit")
+    val xml: Elem = XML.loadString(pageSource)
+    assertDivWithIdExists(xml, "oneTime")
   }
-  
+
+  it should "be able to submit claim XML and then see a timeline in json format" in {
+    textArea("custxml").value = getClaimXML
+    textField("claimDate").value = ""
+    click on id("submitjson")
+    val source: String = pageSource
+    assert(source.startsWith("[{\"startDate\": \"2010-05-06\""))
+  }
+
+  it should "throw an exception if submitted with an invalid claimDate value" in {
+    go to (host + "index.html")
+    click on name("claimDate")
+    textField("claimDate").value = "not a date"
+    click on id("submit")
+  }
+
+  it should "throw an exception if submitted with invalid xml" in {
+    go to (host + "index.html")
+    textArea("custxml").value = "not xml"
+    click on id("submit")
+  }
+
+  it should "execute a query lots of times without crashing " in {
+    for (i <- 1 to 5) {
+      go to (host + "index.html")
+      textArea("custxml").value = getClaimXML
+      textField("claimDate").value = ""
+      click on id("submit")
+      val xml: Elem = XML.loadString(pageSource)
+      assertDivWithIdExists(xml, "timeLine")
+    }
+  }
+
   def getClaimXML: String = {
     val xml: Elem =
       <ValidateClaim xsi:schemaLocation="http://www.autotdd.com/ca Conversation%20v2_1%202010-07-16.xsd" xmlns="http://www.autotdd.com/ca" xmlns:n1="http://www.autotdd.com/ca" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
         <piid>String</piid>
         <newClaimantData>true</newClaimantData>
         <ClaimantData>
-          <ClaimantNINO>CL100100A</ClaimantNINO>
+          <ClaimantNINO>CL800119A</ClaimantNINO>
           <ClaimantNameDetails>
             <PersonNameTitle>MR</PersonNameTitle>
-            <PersonGivenName>ADAM</PersonGivenName>
-            <PersonFamilyName>APPLE</PersonFamilyName>
+            <PersonGivenName>BREAK</PersonGivenName>
+            <PersonFamilyName>IN-CARE</PersonFamilyName>
             <PersonNameSuffix>BSC</PersonNameSuffix>
-            <PersonRequestedName> APPLE</PersonRequestedName>
+            <PersonRequestedName>BREAKY</PersonRequestedName>
           </ClaimantNameDetails>
           <ClaimantBirthDate>
-            <PersonBirthDate>1970-08-13</PersonBirthDate>
+            <PersonBirthDate>1958-02-10</PersonBirthDate>
             <VerificationLevel>Level 1</VerificationLevel>
           </ClaimantBirthDate>
-          <ClaimantDeathDate>
-            <PersonDeathDate>3000-01-01</PersonDeathDate>
-            <VerificationLevel>Level 0</VerificationLevel>
-          </ClaimantDeathDate>
           <ClaimantMaritalStatus>
             <MaritalStatus>Married</MaritalStatus>
             <VerificationLevel>Level 1</VerificationLevel>
@@ -90,35 +126,51 @@ class SmokeWebtest extends FlatSpec with ShouldMatchers with HtmlUnit with Befor
           <ClaimantNationality>GB</ClaimantNationality>
           <ClaimantContactDetails>
             <PreferredLanguages>en</PreferredLanguages>
-            <Telephone n1:TelMobile="no" n1:TelUse="home" n1:TelPreferred="yes">
-              <TelNationalNumber>01937843786</TelNationalNumber>
-              <TelExtensionNumber>0</TelExtensionNumber>
-              <TelCountryCode>44</TelCountryCode>
-            </Telephone>
+            <Email n1:EmailUse="work" n1:EmailPreferred="yes">
+              <EmailAddress>'breaks@care.com'</EmailAddress>
+            </Email>
           </ClaimantContactDetails>
           <ClaimantAddress>
-            <Line1>12 FREESTYLE MEADOWS</Line1>
-            <Line2>ASHTON UNDER LYNE</Line2>
-            <PostCode>AL5 9IK</PostCode>
-            <AddressStartDate>2003-11-05</AddressStartDate>
+            <Line1>1 BREAK</Line1>
+            <Line2>IN-CARE</Line2>
+            <PostCode>BC1 1AA</PostCode>
           </ClaimantAddress>
         </ClaimantData>
         <newClaimData>true</newClaimData>
         <ClaimData>
-          <ClaimStartDate>2010-05-10</ClaimStartDate>
+          <ClaimStartDate>2010-05-06</ClaimStartDate>
           <ClaimNinoKnown>yes</ClaimNinoKnown>
           <ClaimPrevious>no</ClaimPrevious>
-          <ClaimPreviousPaid>no</ClaimPreviousPaid>
           <ClaimOverseas>no</ClaimOverseas>
+          <ClaimEUArea>yes</ClaimEUArea>
+          <ClaimEUDependantChildren>no</ClaimEUDependantChildren>
           <ClaimAlwaysUK>yes</ClaimAlwaysUK>
           <ClaimCurrentResidentUK>yes</ClaimCurrentResidentUK>
-          <ClaimPartnerExists>no</ClaimPartnerExists>
-          <ClaimRelationToCarer>Son</ClaimRelationToCarer>
+          <ClaimPartnerExists>yes</ClaimPartnerExists>
+          <ClaimPartnerExistsDate>1990-05-10</ClaimPartnerExistsDate>
+          <ClaimRelationToCarer>Husband</ClaimRelationToCarer>
           <ClaimPaidCare>no</ClaimPaidCare>
           <ClaimRivalCarer>no</ClaimRivalCarer>
           <Claim35Hours>yes</Claim35Hours>
-          <ClaimBreakInCare>no</ClaimBreakInCare>
-          <ClaimPrior35Hours>no</ClaimPrior35Hours>
+          <ClaimBreakInCare>yes</ClaimBreakInCare>
+          <ClaimBreaks>
+            <BreakInCare>
+              <BICFromDate>2010-05-30</BICFromDate>
+              <BICToDate>2010-06-13</BICToDate>
+              <BICReason>Hospitalisation</BICReason>
+              <BICType>Hospital</BICType>
+            </BreakInCare>
+            <BreakInCare>
+              <BICFromDate>2010-06-21</BICFromDate>
+              <BICToDate>2010-06-30</BICToDate>
+              <BICReason>Hospitalisation</BICReason>
+              <BICType>Hospital</BICType>
+            </BreakInCare>
+          </ClaimBreaks>
+          <ClaimPrior35Hours>yes</ClaimPrior35Hours>
+          <ClaimPrior35HoursDate>2010-05-17</ClaimPrior35HoursDate>
+          <ClaimPriorBreakInCare>no</ClaimPriorBreakInCare>
+          <ClaimDependantAwayFromHome>no</ClaimDependantAwayFromHome>
           <ClaimEducationFullTime>no</ClaimEducationFullTime>
           <ClaimEmployment>no</ClaimEmployment>
           <ClaimRentalIncome>no</ClaimRentalIncome>
@@ -126,71 +178,106 @@ class SmokeWebtest extends FlatSpec with ShouldMatchers with HtmlUnit with Befor
           <ClaimSelfEmployed>no</ClaimSelfEmployed>
         </ClaimData>
         <newPartnerData>true</newPartnerData>
+        <PartnerData>
+          <PartnerNINO>DP800119A</PartnerNINO>
+          <PartnerNameDetails>
+            <PersonNameTitle>MRS</PersonNameTitle>
+            <PersonGivenName>MANDY</PersonGivenName>
+            <PersonFamilyName>IN-CARE</PersonFamilyName>
+          </PartnerNameDetails>
+          <PartnerBirthDate>
+            <PersonBirthDate>1974-12-01</PersonBirthDate>
+            <VerificationLevel>Level 1</VerificationLevel>
+          </PartnerBirthDate>
+          <PartnerMaritalStatus>
+            <MaritalStatus>Married</MaritalStatus>
+            <VerificationLevel>Level 1</VerificationLevel>
+          </PartnerMaritalStatus>
+          <PartnerGenderAtRegistration>2 = Female</PartnerGenderAtRegistration>
+          <PartnerGenderCurrent>2 = Female</PartnerGenderCurrent>
+          <PartnerNationality>GB</PartnerNationality>
+          <PartnerContactDetails>
+            <PreferredLanguages>en</PreferredLanguages>
+          </PartnerContactDetails>
+          <PartnerAddress>
+            <Line1>1 BREAK</Line1>
+            <Line2>IN-CARE</Line2>
+            <PostCode>BC1 1AA</PostCode>
+          </PartnerAddress>
+        </PartnerData>
         <newDependantData>true</newDependantData>
         <DependantData>
-          <DependantNINO>DP100100A</DependantNINO>
+          <DependantNINO>DP800119A</DependantNINO>
           <DependantNameDetails>
             <PersonNameTitle>MRS</PersonNameTitle>
-            <PersonGivenName>MAUREEN</PersonGivenName>
-            <PersonFamilyName>HEPWORTH</PersonFamilyName>
-            <PersonNameSuffix>
-            </PersonNameSuffix>
-            <PersonRequestedName>
-            </PersonRequestedName>
+            <PersonGivenName>MANDY</PersonGivenName>
+            <PersonFamilyName>IN-CARE</PersonFamilyName>
           </DependantNameDetails>
           <DependantBirthDate>
-            <PersonBirthDate>1920-05-01</PersonBirthDate>
+            <PersonBirthDate>1974-12-01</PersonBirthDate>
             <VerificationLevel>Level 1</VerificationLevel>
           </DependantBirthDate>
           <DependantMaritalStatus>
-            <MaritalStatus>Widowed</MaritalStatus>
+            <MaritalStatus>Married</MaritalStatus>
             <VerificationLevel>Level 1</VerificationLevel>
           </DependantMaritalStatus>
-          <DependantGenderAtRegistration>
-            2 = Female
-          </DependantGenderAtRegistration>
+          <DependantGenderAtRegistration>2 = Female</DependantGenderAtRegistration>
           <DependantGenderCurrent>2 = Female</DependantGenderCurrent>
           <DependantNationality>GB</DependantNationality>
+          <DependantContactDetails>
+            <PreferredLanguages>en</PreferredLanguages>
+          </DependantContactDetails>
           <DependantAddress>
-            <Line1>9 HALL MEWS</Line1>
-            <Line2>BOSTON SPA</Line2>
-            <PostCode>LS23 6QB</PostCode>
+            <Line1>1 BREAK</Line1>
+            <Line2>IN-CARE</Line2>
+            <PostCode>BC1 1AA</PostCode>
           </DependantAddress>
         </DependantData>
-        <newPaidCareData>true</newPaidCareData>
-        <newRivalCarerData>true</newRivalCarerData>
+        <newPaidCareData>false</newPaidCareData>
+        <newRivalCarerData>false</newRivalCarerData>
         <newStatementData>true</newStatementData>
         <StatementData>
           <StatementType>SignedBySelf</StatementType>
           <StatementRole>Self</StatementRole>
-          <StatementSignature/>
-          <StatementDate>2010-05-10</StatementDate>
+          <StatementSignature>X</StatementSignature>
+          <StatementDate>2010-06-28</StatementDate>
           <StatementHoursConfirmed>yes</StatementHoursConfirmed>
           <StatementHoursUnconfirmed>no</StatementHoursUnconfirmed>
           <StatementReason/>
         </StatementData>
-        <newResidenceData>true</newResidenceData>
-        <ResidenceData>
-          <ResidenceNormallyGB>yes</ResidenceNormallyGB>
-          <ResidenceNormalCountry/>
-          <ResidenceCurrentlyGB>yes</ResidenceCurrentlyGB>
-          <Residence4WeeksOutsideGB>no</Residence4WeeksOutsideGB>
-          <ResidencePrior12Months>no</ResidencePrior12Months>
-        </ResidenceData>
+        <newResidenceData>false</newResidenceData>
         <newEducationData>false</newEducationData>
         <newEmploymentData>false</newEmploymentData>
         <newExpensesData>false</newExpensesData>
         <newSelfEmpData>false</newSelfEmpData>
         <newOtherMoneyData>false</newOtherMoneyData>
-        <newPaymentData>false</newPaymentData>
+        <newPaymentData>true</newPaymentData>
+        <PaymentData>
+          <PaymentPeriodicity>Weekly</PaymentPeriodicity>
+          <PaymentAccountHolder>MR B IN-CARE</PaymentAccountHolder>
+          <PaymentBankName>MIDLAND BANK</PaymentBankName>
+          <PaymentSortCode>212121</PaymentSortCode>
+          <PaymentAccountNumber>12345678</PaymentAccountNumber>
+          <PaymentAlignAccount>yes</PaymentAlignAccount>
+        </PaymentData>
         <newConsentData>true</newConsentData>
         <ConsentData>
-          <ConsentAgreeEmployer>yes</ConsentAgreeEmployer>
+          <ConsentAgreeEmployer>no</ConsentAgreeEmployer>
           <ConsentAgreeOthers>yes</ConsentAgreeOthers>
-          <ConsentSignature></ConsentSignature>
-          <ConsentDate>2010-03-15</ConsentDate>
+          <ConsentSignature>GOT ONE</ConsentSignature>
+          <ConsentDate>2010-06-28</ConsentDate>
         </ConsentData>
       </ValidateClaim>
-      xml.toString
+
+    xml.toString
   }
- }
+  def assertDivWithIdExists(xml: Elem, attributeId: String) = {
+    val timeLineNodes = xml \\ "div"
+    assert(timeLineNodes.length > 0)
+    val optDivWithId = timeLineNodes.find((n) => {
+      val a = n.attribute("id")
+      a.isDefined && a.get.text == attributeId
+    })
+    assert(optDivWithId.isDefined)
+  }
+}

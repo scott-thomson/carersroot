@@ -14,12 +14,13 @@ import org.cddcore.carers.CarersXmlSituation
 import scala.xml.XML
 import org.cddcore.carers.TimeLineCalcs
 import org.cddcore.carers.TimeLineItem
+import org.cddcore.carers.NinoToCis
 
-class ClaimHandler extends AbstractHandler {
+class ClaimHandler(ninoToCis: NinoToCis ) extends AbstractHandler {
   private val MethodPost: String = "POST";
 
   private val MethodGet: String = "GET";
-  val world = World()
+  val world = World(ninoToCis)
   val contentTypeText = "text/html;charset=utf-8"
   val contentTypeJson = "application/json;charset=utf-8"
   def handle(target: String, baseRequest: Request, request: HttpServletRequest, response: HttpServletResponse) {
@@ -33,6 +34,9 @@ class ClaimHandler extends AbstractHandler {
       }
       response.setContentType(contentType)
       response.getWriter().println(body)
+      Runtime.getRuntime().gc()
+      Runtime.getRuntime().gc()
+      println("Free nemory: " + Runtime.getRuntime().freeMemory())
     } catch {
       case e: Throwable =>
         e.printStackTrace(response.getWriter);
@@ -44,6 +48,7 @@ class ClaimHandler extends AbstractHandler {
         props.list(response.getWriter());
         response.getWriter().println("Class Path = ")
         response.getWriter().println(props.get("java.class.path"))
+
     }
     baseRequest.setHandled(true)
   }
@@ -88,7 +93,7 @@ class ClaimHandler extends AbstractHandler {
 
   val operatingPort = System.getenv("PORT")
 
-  def getCarerView(xmlString: String, claimDate: String, returnMessage: Elem = <nothing />): Elem =
+  def getCarerView(xmlString: String, claimDate: String, returnMessage: Elem = <nothing/>): Elem =
     <html>
       <head>
         <title>Validate Claim</title>

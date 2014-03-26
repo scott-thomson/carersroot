@@ -18,6 +18,27 @@ case class World(ninoToCis: NinoToCis = new WebserverNinoToCis("http://atos-cis.
   val dayToSplitOn = DateRanges.monday
 }
 
+trait NinoToCis {
+  def apply(nino: String): Elem
+}
+
+class TestNinoToCis extends NinoToCis {
+  def apply(nino: String) =
+    try {
+      val full = s"Cis/${nino}.txt"
+      val url = getClass.getClassLoader.getResource(full)
+      if (url == null)
+        <NoCis/>
+      else {
+        val xmlString = scala.io.Source.fromURL(url).mkString
+        val xml = XML.loadString(xmlString)
+        xml
+      }
+    } catch {
+      case e: Exception => throw new RuntimeException("Cannot load " + nino, e)
+    }
+}
+
 object Claim {
   def getXml(id: String) = {
     val full = s"ValidateClaim/${id}.xml"
