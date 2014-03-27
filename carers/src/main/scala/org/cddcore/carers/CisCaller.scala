@@ -7,8 +7,16 @@ import scala.xml.XML
 
 class WebserverNinoToCis(host: String) extends NinoToCis {
   def apply(nino: String): Elem = {
+    val start = System.nanoTime()
     val s = Source.fromURL(host + nino).mkString
-    XML.loadString(s)
+    val getItTime = (System.nanoTime() - start) /1000.0
+    
+    
+    val result = XML.loadString(s)
+    val duration = (System.nanoTime() - start) / 1000.0
+    println(f"Get it  took ${getItTime}%,5.2fus")
+    println(f"Plus parsing took ${duration}%,5.2fus")
+    result
   }
 }
 

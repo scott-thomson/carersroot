@@ -47,7 +47,7 @@ object InterestingDates {
     scenario("CL100105A").expected(List()).
     scenario("CL1PA100").expected(("2010-7-10", "Sixteenth Birthday")).
     code((c: CarersXmlSituation) => List((c.claimBirthDate().plusYears(16), "Sixteenth Birthday"))).
-    because((c: CarersXmlSituation) => isInRange(c.claimBirthDate().plusYears(16), c.claimStartDate(), c.claimEndDate())).
+    because((c: CarersXmlSituation) => c.claimBirthDate().plusYears(16).isAfter(c.claimStartDate())).
 
     childEngine("Claim start date", "Is always an interesting date").
     scenario("CL100105A").expected(("2010-1-1", "Claim Start Date")).

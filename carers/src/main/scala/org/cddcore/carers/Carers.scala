@@ -12,7 +12,7 @@ import org.junit.runner.RunWith
 
 case class KeyAndParams(key: String, comment: String, params: Any*)
 
-case class World(ninoToCis: NinoToCis = new WebserverNinoToCis("http://atos-cis.pcfapps.vsel-canopy.com/")) extends LoggerDisplay {
+case class World(ninoToCis: NinoToCis = new TestNinoToCis) extends LoggerDisplay {
   def loggerDisplay(dp: LoggerDisplayProcessor): String =
     "World()"
   val dayToSplitOn = DateRanges.monday
@@ -82,21 +82,44 @@ object Claim {
 case class CarersXmlSituation(world: World, claimXml: Elem) extends XmlSituation {
 
   import Xml._
-  val claimBirthDate = xml(claimXml) \ "ClaimantData" \ "ClaimantBirthDate" \ "PersonBirthDate" \ date("yyyy-MM-dd")
+
+  private val claimantData = xml(claimXml) \ "ClaimantData"
+  val claimBirthDate = claimantData \ "ClaimantBirthDate" \ "PersonBirthDate" \ date("yyyy-MM-dd")
   def claimantUnderSixteen(d: DateTime) = Carers.checkUnderSixteen(claimBirthDate(), d)
-  val claim35Hours = xml(claimXml) \ "ClaimData" \ "Claim35Hours" \ yesNo(default = false)
-  val claimCurrentResidentUK = xml(claimXml) \ "ClaimData" \ "ClaimCurrentResidentUK" \ yesNo(default = false)
-  val claimEducationFullTime = xml(claimXml) \ "ClaimData" \ "ClaimEducationFullTime" \ yesNo(default = false)
-  val claimAlwaysUK = xml(claimXml) \ "ClaimData" \ "ClaimAlwaysUK" \ yesNo(default = false)
-  val childCareExpenses = xml(claimXml) \ "ExpensesData" \ "ExpensesChildAmount" \ double
-  val hasChildCareExpenses = xml(claimXml) \ "ExpensesData" \ "ExpensesChild" \ yesNo(default = false)
-  val occPensionExpenses = xml(claimXml) \ "ExpensesData" \ "ExpensesOccPensionAmount" \ double
-  val hasOccPensionExpenses = xml(claimXml) \ "ExpensesData" \ "ExpensesOccPension" \ yesNo(default = false)
-  val psnPensionExpenses = xml(claimXml) \ "ExpensesData" \ "ExpensesPsnPensionAmount" \ double
-  val hasPsnPensionExpenses = xml(claimXml) \ "ExpensesData" \ "ExpensesPsnPension" \ yesNo(default = false)
+
+  private val claimData = xml(claimXml) \ "ClaimData"
+  val claim35Hours = claimData \ "Claim35Hours" \ yesNo(default = false)
+  val claimCurrentResidentUK = claimData \ "ClaimCurrentResidentUK" \ yesNo(default = false)
+  val claimEducationFullTime = claimData \ "ClaimEducationFullTime" \ yesNo(default = false)
+  val claimAlwaysUK = claimData \ "ClaimAlwaysUK" \ yesNo(default = false)
+  val claimStartDate = claimData \ "ClaimStartDate" \ date
+  val firstMondayAfterClaimStartDate = DateRanges.firstDayOfWeek(claimStartDate(), DateRanges.monday).plusDays(7)
+
+  val claimEndDate = claimData \ "ClaimEndDate" \ optionDate
+
+  val breaksInCare = claimData \ "ClaimBreaks" \ "BreakInCare" \
+    obj((ns) => ns.map((n) => {
+      val from = Claim.asDate((n \ "BICFromDate").text)
+      val to = Claim.asDate((n \ "BICToDate").text)
+      val reason = (n \ "BICType").text
+      new DateRange(from, to, reason)
+    }))
+
+  private val expensesData = xml(claimXml) \ "ExpensesData"
+  val childCareExpenses = expensesData \ "ExpensesChildAmount" \ double
+  val hasChildCareExpenses = expensesData \ "ExpensesChild" \ yesNo(default = false)
+  val occPensionExpenses = expensesData \ "ExpensesOccPensionAmount" \ double
+  val hasOccPensionExpenses = expensesData \ "ExpensesOccPension" \ yesNo(default = false)
+  val psnPensionExpenses = expensesData \ "ExpensesPsnPensionAmount" \ double
+  val hasPsnPensionExpenses = expensesData \ "ExpensesPsnPension" \ yesNo(default = false)
+
   val hasEmploymentData = xml(claimXml) \ "newEmploymentData" \ boolean
-  val employmentGrossSalary = xml(claimXml) \ "EmploymentData" \ "EmploymentGrossSalary" \ double
-  val employmentPayPeriodicity = xml(claimXml) \ "EmploymentData" \ "EmploymentPayPeriodicity" \ string
+  private val employmentData = xml(claimXml) \ "EmploymentData"
+  val employmentGrossSalary = employmentData \ "EmploymentGrossSalary" \ double
+  val employmentPayPeriodicity = employmentData \ "EmploymentPayPeriodicity" \ string
+
+  val claimSubmittedDate = xml(claimXml) \ "StatementData" \ "StatementDate" \ date
+  val timeLimitForClaimingThreeMonths = claimSubmittedDate().minusMonths(3)
 
   val DependantNino = xml(claimXml) \ "DependantData" \ "DependantNINO" \ string
   val dependantCisXml: Elem = DependantNino.get() match {
@@ -106,11 +129,6 @@ case class CarersXmlSituation(world: World, claimXml: Elem) extends XmlSituation
 
   val dependantLevelOfQualifyingCare = xml(dependantCisXml) \\ "AwardComponent" \ string
 
-  val claimSubmittedDate = xml(claimXml) \ "StatementData" \ "StatementDate" \ date
-  val claimStartDate = xml(claimXml) \ "ClaimData" \ "ClaimStartDate" \ date
-  val firstMondayAfterClaimStartDate = DateRanges.firstDayOfWeek(claimStartDate(), DateRanges.monday).plusDays(7)
-  val timeLimitForClaimingThreeMonths = claimSubmittedDate().minusMonths(3)
-  val claimEndDate = xml(claimXml) \ "ClaimData" \ "ClaimEndDate" \ optionDate
   val dependantAwardStartDate = xml(dependantCisXml) \ "Award" \ "AssessmentDetails" \ "ClaimStartDate" \ optionDate
 
   def income(d: DateTime) = Income.income(d, this)
@@ -125,14 +143,6 @@ case class CarersXmlSituation(world: World, claimXml: Elem) extends XmlSituation
       val awardStartDate = Claim.asDate((n \ "AwardDetails" \ "AwardStartDate").text)
       Award(benefitType, awardComponent, claimStatus, awardStartDate)
     }).toList)
-
-  val breaksInCare = xml(claimXml) \ "ClaimData" \ "ClaimBreaks" \ "BreakInCare" \
-    obj((ns) => ns.map((n) => {
-      val from = Claim.asDate((n \ "BICFromDate").text)
-      val to = Claim.asDate((n \ "BICToDate").text)
-      val reason = (n \ "BICType").text
-      new DateRange(from, to, reason)
-    }))
 
   def isThereAnyQualifyingBenefit(d: DateTime) = awardList().foldLeft[Boolean](false)((acc, a) => acc || Carers.checkQualifyingBenefit(d, a))
 }
