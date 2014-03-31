@@ -1,14 +1,14 @@
 memory: 1G
 instances: 1
-buildpack: https://github.com/heroku/heroku-buildpack-scala.git
+buildpack: https://github.com/ahepworth/heroku-buildpack-scala.git
 
 applications:
-- name: FrontEndInRoot
-  host: carers-frontend
+- name: cadigital
+  host: cadigital
   path: ./frontend/
-- name: CisInRoot
-  host: cis-root
+- name: cis
+  host: cis
   path: ./cis/
-- name: CarersInRoot
-  host: carers-root
+- name: cacore
+  host: cacore
   path: ./carers/

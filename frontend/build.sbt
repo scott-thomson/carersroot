@@ -1,8 +1,8 @@
-name := """CarersDigital"""
+name := "CADigital"
 
-version := "1.0-SNAPSHOT"
+version := "1.0"
 
-scalaVersion := "2.10.1"
+scalaVersion := "2.10.3"
 
 libraryDependencies ++= Seq(
   // Select Play modules
@@ -20,11 +20,6 @@ libraryDependencies ++= Seq(
   "org.webjars" % "jquery-ui" % "1.10.3"    
   // Add your own project dependencies in the form:
   // "group" % "artifact" % "version"
-)
-
-libraryDependencies ++= Seq(
-  "org.cddcore" %% "website" % "1.8.5.13",
-  "org.cddcore" %% "legacy" % "1.8.5.13"  
 )
 
 play.Project.playScalaSettings
