@@ -7,7 +7,7 @@ import org.cddcore.carers.WebserverNinoToCis
 
 object ValidateClaimServer {
 
-  val ninoToCis = new WebserverNinoToCis("http://cis-root.pcfapps.vsel-canopy.com/")
+  val ninoToCis = new WebserverNinoToCis("http://cis.apps.pp.cf.canopy-cloud.com/")
   val claimHandler = new ClaimHandler(ninoToCis)
 
   def apply(port: Int = defaultPort) = {
