@@ -26,7 +26,7 @@ object ClaimController extends Controller {
 
     val form = Map("custxml" -> Seq(xmlString), "claimDate" -> Seq("2010-07-05"))
 
-    val futureResult: Future[Response] = WS.url("http://cacore.apps.pp.cf.canopy-cloud.com/json").post(form)
+    val futureResult: Future[Response] = WS.url("http://cacore.apps.cf.canopy-cloud.com/json").post(form)
 
     futureResult.map { response =>
       {
